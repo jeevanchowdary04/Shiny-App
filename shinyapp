@@ -1,0 +1,74 @@
+library(tidyverse)
+library(tidytext)
+
+# Sample data
+data <- data_frame(text = c("I am learning R", "Shiny apps are great", "Shiny app development is fun"))
+
+# Tokenize the text and create n-grams (unigrams, bigrams, trigrams)
+ngrams <- data %>%
+  unnest_tokens(ngram, text, token = "ngrams", n = 3) %>%
+  count(ngram, sort = TRUE)
+library(shiny)
+
+# Define UI
+ui <- fluidPage(
+    titlePanel("Next Word Prediction App"),
+    sidebarLayout(
+        sidebarPanel(
+            textInput("inputText", "Enter a phrase:", value = ""),
+            actionButton("predictButton", "Predict Next Word")
+        ),
+        mainPanel(
+            h3("Predicted Next Word:"),
+            textOutput("prediction")
+        )
+    )
+)
+library(shiny)
+library(dplyr)
+library(tidytext)
+
+# Load your pre-trained model (e.g., 3-gram model)
+ngram_model <- readRDS("ngram_model.rds")
+
+# Define server logic
+server <- function(input, output, session) {
+    
+    # Function to predict next word
+    predict_next_word <- function(phrase) {
+        # Clean and preprocess input
+        input_tokens <- unlist(strsplit(tolower(phrase), " "))
+        
+        # Extract last two words (for bigram prediction)
+        last_two_words <- tail(input_tokens, 2)
+        
+        # Generate prediction (based on N-gram model)
+        predicted_word <- ngram_model %>%
+            filter(grepl(paste(last_two_words, collapse = " "), ngram)) %>%
+            top_n(1, n) %>%
+            pull(ngram) %>%
+            str_split(" ") %>%
+            unlist() %>%
+            tail(1)
+        
+        return(predicted_word)
+    }
+    
+    # React when the button is clicked
+    observeEvent(input$predictButton, {
+        if (input$inputText != "") {
+            predicted_word <- predict_next_word(input$inputText)
+            output$prediction <- renderText({
+                predicted_word
+            })
+        } else {
+            output$prediction <- renderText({"Please enter a phrase!"})
+        }
+    })
+}
+
+# Run the app
+shinyApp(ui = ui, server = server)
+
+
+shiny::runApp("path_to_your_directory")
